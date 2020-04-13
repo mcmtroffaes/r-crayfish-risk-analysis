@@ -183,4 +183,4 @@ main = function(csvfile) {
   print_util_weights(csvfile)
 }
 
-main("expertdata.csv")
+main("expert-data.csv")
