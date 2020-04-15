@@ -46,6 +46,22 @@ get_util_weights = function(csvfile) {
 
 library(rjags)
 
+# model without management decision (posterior probability of presence)
+get_h = function(t, alpha) {
+  ms = "
+model {
+  theta ~ dbeta(s*t, s*(1-t)) T(0.001,0.999) # truncate to avoid infinite density
+  H ~ dbinom(theta,1)
+  E ~ dbinom(alpha,H)
+}"
+  data_to_model = list(s=2, t=t, alpha=alpha, E=0)
+  m = jags.model(textConnection(ms), data=data_to_model, inits=list(H=1), n.adapt=10^6, n.chains=1)
+  summary(coda.samples(m, 'H', n.iter=10^4, thin=1))
+}
+
+# model with management decision (range on posterior probability of
+# presence after management decision, and range on posterior expected
+# utility)
 get_hprime_util_ranges = function(csvfile, t, alpha) {
   ms = "
 model {
@@ -91,7 +107,8 @@ model {
                        util_hprime_one=util_hprime_one)
   
   m = jags.model(textConnection(ms), data=data_to_model, inits=list(H=1), n.adapt=10^6, n.chains=1)
-  s = summary(coda.samples(m, c('Hprime', 'U'), n.iter=10^4, thin=1))$statistics[,'Mean']
+  smry = summary(coda.samples(m, c('Hprime', 'U'), n.iter=10^4, thin=1))
+  s = smry$statistics[,'Mean']
   hprime = array(
     s[1:(n_beta_points * n_decisions)], c(n_beta_points, n_decisions))
   util = array(
@@ -180,6 +197,7 @@ main = function(csvfile) {
   # alpha=0.9 is not interesting since then we know
   # there is no crayfish with high probability
 
+  print(get_h(t=0.8, alpha=0.1))
   print_util_weights(csvfile)
 }
 
