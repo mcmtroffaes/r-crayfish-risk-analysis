@@ -131,6 +131,7 @@ make_range_min_width = function(range, min_width) {
   rbind(pmin(range[1,], mid_range[1,]), pmax(range[2,], mid_range[2,]))
 }
 
+# function to run the analysis for a given choice of t and alpha
 plotit = function(csvfile, t, alpha) {
   pdf(paste0('fig-t', t * 10, '-a', alpha * 10, '.pdf'), width=4.5, height=2.25)
   ranges = get_hprime_util_ranges(csvfile=csvfile, t=t, alpha=alpha)
@@ -172,45 +173,8 @@ plotit = function(csvfile, t, alpha) {
   dev.off()
 }
 
-###########################################################################
-# some extra helper functions
-###########################################################################
-
-print_util_weights = function(csvfile) {
-  library(xtable)
-  print(xtable(get_util_weights(csvfile)), floating=FALSE, tabular.environment="tabular", hline.after=NULL, include.rownames=TRUE, include.colnames=TRUE)
-}
-
-###########################################################################
-# run everything
-###########################################################################
-
-main = function(csvfile) {
-  plotit(csvfile, t=0.1, alpha=0.1)
-  plotit(csvfile, t=0.5, alpha=0.1)
-  plotit(csvfile, t=0.9, alpha=0.1)
-  plotit(csvfile, t=0.1, alpha=0.5)
-  plotit(csvfile, t=0.5, alpha=0.5)
-  plotit(csvfile, t=0.9, alpha=0.5)
-  plotit(csvfile, t=0.8, alpha=0.1)
-
-  # alpha=0.9 is not interesting since then we know
-  # there is no crayfish with high probability
-
-  print(get_h(t=0.8, alpha=0.1))
-  print_util_weights(csvfile)
-}
-
-main("expert-data.csv")
-
-##########################################################################
-# run the combined analysis
-##########################################################################
-
-t_vals = c(0.1,0.1,0.9,0.9)
-alpha_vals = c(0.1,0.5,0.1,0.5)
+# function to run the analysis for a range of t and alpha
 plotit_2 = function(csvfile, t_vals, alpha_vals) {
-  csvfile = "expert-data.csv"
   pdf(paste0('fig-all.pdf'), width=4.5, height=2.25)
   ranges_list = lapply(1:4,function(ix){
     get_hprime_util_ranges(csvfile=csvfile, t=t_vals[ix], alpha=alpha_vals[ix])
@@ -243,8 +207,9 @@ plotit_2 = function(csvfile, t_vals, alpha_vals) {
       d=barnames, param=groupnames[2]))
   # hline data
   data_hline = data.frame(
-    val=c(t*100, max(ranges$util_range_plot[1,])), param=groupnames)
-  # blank data to ensure common limits on all plots
+    #val=c(min(t_vals)*100, max(t_vals)*100,  max(ranges$util_range_plot[1,])), param=groupnames[c(1,1,2)])
+    val=c(max(ranges$util_range_plot[1,])), param=groupnames[2])
+# blank data to ensure common limits on all plots
   data_blank = data.frame(
     y=c(0,100,1,4), param=rep(groupnames, each=2))
   
@@ -252,7 +217,7 @@ plotit_2 = function(csvfile, t_vals, alpha_vals) {
     scale_color_discrete() +
     geom_linerange(data=data_range,
                    aes(ymin=lower, ymax=upper, x=d, col=d), size=6) +
-    geom_hline(data=data_hline, aes(yintercept=val), linetype=c(1, 2)) +
+    geom_hline(data=data_hline, aes(yintercept=val), linetype=c(2)) +
     geom_blank(data=data_blank, aes(y=y, param=param)) +
     facet_wrap(~param, scales='free') +
     coord_flip() +
@@ -262,3 +227,37 @@ plotit_2 = function(csvfile, t_vals, alpha_vals) {
   
   dev.off()
 }
+
+###########################################################################
+# some extra helper functions
+###########################################################################
+
+print_util_weights = function(csvfile) {
+  library(xtable)
+  print(xtable(get_util_weights(csvfile)), floating=FALSE, tabular.environment="tabular", hline.after=NULL, include.rownames=TRUE, include.colnames=TRUE)
+}
+
+###########################################################################
+# run everything
+###########################################################################
+
+main = function(csvfile) {
+  plotit_2(csvfile,t_vals=c(0.1,0.1,0.9,0.9), alpha_vals=c(0.1,0.5,0.1,0.5))
+  plotit(csvfile, t=0.1, alpha=0.1)
+  plotit(csvfile, t=0.5, alpha=0.1)
+  plotit(csvfile, t=0.9, alpha=0.1)
+  plotit(csvfile, t=0.1, alpha=0.5)
+  plotit(csvfile, t=0.5, alpha=0.5)
+  plotit(csvfile, t=0.9, alpha=0.5)
+  plotit(csvfile, t=0.8, alpha=0.1)
+
+  # alpha=0.9 is not interesting since then we know
+  # there is no crayfish with high probability
+
+  print(get_h(t=0.8, alpha=0.1))
+  print_util_weights(csvfile)
+}
+
+main("expert-data.csv")
+
+csvfile = "expert-data.csv"
