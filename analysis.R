@@ -175,7 +175,6 @@ plotit = function(csvfile, t, alpha) {
 
 # function to run the analysis for a range of t and alpha
 plotit_2 = function(csvfile, t_vals, alpha_vals) {
-  pdf(paste0('fig-all.pdf'), width=4.5, height=2.25)
   ranges_list = lapply(1:4,function(ix){
     get_hprime_util_ranges(csvfile=csvfile, t=t_vals[ix], alpha=alpha_vals[ix])
   })
@@ -218,13 +217,50 @@ plotit_2 = function(csvfile, t_vals, alpha_vals) {
     geom_linerange(data=data_range,
                    aes(ymin=lower, ymax=upper, x=d, col=d), size=6) +
     geom_hline(data=data_hline, aes(yintercept=val), linetype=c(2)) +
-    geom_blank(data=data_blank, aes(y=y, param=param)) +
+    geom_blank(data=data_blank, aes(y=y, param=param,)) +
     facet_wrap(~param, scales='free') +
     coord_flip() +
     theme(legend.position='none') + 
     labs(x='decision', y ='')
+  pdf(paste0('fig-all.pdf'), width=4.5, height=2.25)
   print(p)
+  dev.off()
   
+  # plot all extremes 
+  
+  # update range data scale and ensure ranges are visible
+  ranges_h <- do.call('cbind',lapply(ranges_list,function(x){make_range_min_width(100*x$hprime_range, 0.02 * 100)}))
+  ranges_u <- do.call('cbind',lapply(ranges_list,function(x){make_range_min_width(x$util_range, 0.02 * 3)}))
+
+  # line range data
+  data_range = rbind(
+    data.frame(
+      lower=ranges_h[1,], upper=ranges_h[2,],
+      d=barnames, param=groupnames[1], extremepoint = rep(letters[1:4],each=6)),
+    data.frame(
+      lower=ranges_u[1,], upper=ranges_u[2,],
+      d=barnames, param=groupnames[2],extremepoint = rep(letters[1:4],each=6)))
+  # hline data
+  data_hline = data.frame(
+    val=c(t_vals*100,  max(ranges_u[1,1:6]),max(ranges_u[1,7:12]),max(ranges_u[1,13:18]),max(ranges_u[1,19:24])), param=rep(groupnames,each=4),extremepoint=rep(letters[1:4],2))
+  # blank data to ensure common limits on all plots
+  data_blank = data.frame(
+    y=c(0,100,1,4), param=rep(groupnames, each=2))
+  #y=rep(c(0,100,1,4),4), param=rep(rep(groupnames, each=2),4),extremepoint=rep(letters[1:4],each=4))
+
+  p = ggplot() + 
+    scale_color_discrete() +
+    geom_linerange(data=data_range,
+                   aes(ymin=lower, ymax=upper, x=d, col=d), size=4) +
+    geom_hline(data=data_hline, aes(yintercept=val), linetype=c(rep(1,4),rep(2,4))) +
+    geom_blank(data=data_blank, aes(y=y, param=param)) +
+    facet_grid(extremepoint~param, scales='free') +
+    coord_flip() +
+    theme(legend.position='none') + 
+    labs(x='decision', y ='') + 
+    theme(strip.text.y = element_text(angle = 0))
+  pdf(paste0('fig-extremes.pdf'), width=4.5, height=4.5)
+  print(p)
   dev.off()
 }
 
@@ -260,4 +296,3 @@ main = function(csvfile) {
 
 main("expert-data.csv")
 
-csvfile = "expert-data.csv"
