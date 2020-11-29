@@ -135,7 +135,7 @@ plotit = function(csvfile, t, alpha) {
   pdf(paste0('fig-t', t * 10, '-a', alpha * 10, '.pdf'), width=4.5, height=2.25)
   ranges = get_hprime_util_ranges(csvfile=csvfile, t=t, alpha=alpha)
   barnames = c('I','II','III','IV','V','VI')
-  groupnames = c('probability of presence','expected utility')
+  groupnames = factor(c('probability of presence','expected utility'),levels=c('probability of presence','expected utility'))
 
   # update range data scale and ensure ranges are visible
   ranges$hprime_range_plot = make_range_min_width(
@@ -202,3 +202,63 @@ main = function(csvfile) {
 }
 
 main("expert-data.csv")
+
+##########################################################################
+# run the combined analysis
+##########################################################################
+
+t_vals = c(0.1,0.1,0.9,0.9)
+alpha_vals = c(0.1,0.5,0.1,0.5)
+plotit_2 = function(csvfile, t_vals, alpha_vals) {
+  csvfile = "expert-data.csv"
+  pdf(paste0('fig-all.pdf'), width=4.5, height=2.25)
+  ranges_list = lapply(1:4,function(ix){
+    get_hprime_util_ranges(csvfile=csvfile, t=t_vals[ix], alpha=alpha_vals[ix])
+  })
+  ranges <- ranges_list[[1]]
+  ranges_h <- lapply(ranges_list,function(x){x$hprime_range})
+  ranges_h_min <- pmin(ranges_h[[1]],ranges_h[[2]],ranges_h[[3]],ranges_h[[4]])
+  ranges_h_max <- pmax(ranges_h[[1]],ranges_h[[2]],ranges_h[[3]],ranges_h[[4]])
+  ranges$hprime_range <- rbind(ranges_h_min[1,], ranges_h_max[2,])
+  ranges_u <- lapply(ranges_list,function(x){x$util_range})
+  ranges_u_min <- pmin(ranges_u[[1]],ranges_u[[2]],ranges_u[[3]],ranges_u[[4]])
+  ranges_u_max <- pmax(ranges_u[[1]],ranges_u[[2]],ranges_u[[3]],ranges_u[[4]])
+  ranges$util_range <- rbind(ranges_u_min[1,], ranges_u_max[2,])
+  
+  barnames = c('I','II','III','IV','V','VI')
+  groupnames = factor(c('probability of presence','expected utility'),levels=c('probability of presence','expected utility'))
+  
+  # update range data scale and ensure ranges are visible
+  ranges$hprime_range_plot = make_range_min_width(
+    100 * ranges$hprime_range, 0.02 * 100)
+  ranges$util_range_plot = make_range_min_width(ranges$util_range, 0.02 * 3)
+  
+  # line range data
+  data_range = rbind(
+    data.frame(
+      lower=ranges$hprime_range_plot[1,], upper=ranges$hprime_range_plot[2,],
+      d=barnames, param=groupnames[1]),
+    data.frame(
+      lower=ranges$util_range_plot[1,], upper=ranges$util_range_plot[2,],
+      d=barnames, param=groupnames[2]))
+  # hline data
+  data_hline = data.frame(
+    val=c(t*100, max(ranges$util_range_plot[1,])), param=groupnames)
+  # blank data to ensure common limits on all plots
+  data_blank = data.frame(
+    y=c(0,100,1,4), param=rep(groupnames, each=2))
+  
+  p = ggplot() + 
+    scale_color_discrete() +
+    geom_linerange(data=data_range,
+                   aes(ymin=lower, ymax=upper, x=d, col=d), size=6) +
+    geom_hline(data=data_hline, aes(yintercept=val), linetype=c(1, 2)) +
+    geom_blank(data=data_blank, aes(y=y, param=param)) +
+    facet_wrap(~param, scales='free') +
+    coord_flip() +
+    theme(legend.position='none') + 
+    labs(x='decision', y ='')
+  print(p)
+  
+  dev.off()
+}
